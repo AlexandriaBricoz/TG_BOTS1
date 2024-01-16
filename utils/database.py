@@ -153,6 +153,20 @@ async def get_top_users():
         top_users = [(record["username"], record["total_count"]) for record in result]
         return top_users
 
+async def get_top_users_with_date_range(start_date, end_date):
+    async with asyncpg_pool.acquire() as conn:
+        result = await conn.fetch('''
+            SELECT u.username, SUM((r.data::jsonb->>'count')::int) as total_count
+            FROM Users u
+            JOIN ReportsHistory r ON u.user_id = r.user_id
+            WHERE r.date BETWEEN $1 AND $2
+            GROUP BY u.username
+            ORDER BY total_count DESC
+        ''', start_date, end_date)
+
+        # Преобразование результатов в список словарей
+        top_users = [(record["username"], record["total_count"]) for record in result]
+        return top_users
 
 async def get_reports_by_date(day, month, year):
     date_str = f"{day} {month} {year}"
